@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مدیریت انبار - AnbarSky</title>
+  <style>
+    /* تنظیمات پس‌زمینه آسمان شب */
+    body { 
+      font-family: Tahoma, sans-serif; 
+      padding: 16px; 
+      max-width: 900px; /* کمی پهن‌تر شد */
+      margin: auto; 
+      background: linear-gradient(to bottom, #0b0f19 0%, #1a1a3a 50%, #0b0f19 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* ستاره‌های پس‌زمینه */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: 
+        radial-gradient(1px 1px at 20px 30px, #fff, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 40px 70px, #fff, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+        radial-gradient(1.5px 1.5px at 160px 120px, #fff, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 250px 50px, #fff, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 300px 150px, #fff, rgba(0,0,0,0));
+      background-repeat: repeat;
+      background-size: 350px 200px;
+      opacity: 0.3;
+      z-index: -2;
+    }
+
+    /* آیکون‌های ماهواره و دیش */
+    .satellite-bg { position: fixed; opacity: 0.15; z-index: -1; pointer-events: none; }
+    .sat-1 { top: 10%; right: 5%; width: 120px; transform: rotate(-15deg); }
+    .sat-2 { bottom: 15%; left: 5%; width: 150px; transform: rotate(20deg); }
+    .dish-1 { top: 40%; left: 10%; width: 100px; transform: rotate(45deg); }
+
+    /* استایل کادرها (شیشه‌ای) */
+    #login-box, table, .admin-area, .modal-content { 
+      background: rgba(25, 30, 50, 0.85); 
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+      border-radius: 12px;
+    }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+    th, td { border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding: 10px 8px; text-align: right; vertical-align: middle; }
+    th { background: rgba(255, 255, 255, 0.05); text-align: center; font-weight: normal; color: #94a3b8; }
+    
+    .dot { display: inline-block; width: 18px; height: 18px; border-radius: 50%; }
+    .green { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+    .red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+    
+    .admin-area { display: none; margin-top: 20px; padding: 20px; }
+    
+    input, button { 
+      padding: 10px; margin: 6px 0; width: 100%; box-sizing: border-box; 
+      border-radius: 6px; font-family: inherit; font-size: 14px; 
+    }
+    input { 
+      background: rgba(0, 0, 0, 0.3); 
+      border: 1px solid rgba(255, 255, 255, 0.2); 
+      color: #fff; 
+    }
+    input::placeholder { color: #64748b; }
+    input:focus { outline: none; border-color: #3b82f6; }
+    
+    button { cursor: pointer; border: none; font-weight: bold; transition: 0.2s; color: white; }
+    .btn-main { background-color: #3b82f6; }
+    .btn-main:hover { background-color: #2563eb; }
+    .btn-success { background-color: #22c55e; }
+    .btn-success:hover { background-color: #16a34a; }
+    .btn-danger { background-color: #ef4444; }
+    .btn-danger:hover { background-color: #dc2626; }
+    .btn-warning { background-color: #f59e0b; }
+    .btn-warning:hover { background-color: #d97706; }
+
+    #login-box { max-width: 320px; margin: 100px auto; padding: 25px; }
+    #role-badge { color: #cbd5e1; font-size: 14px; margin-bottom: 10px; }
+    
+    /* دکمه‌های عملیات در جدول */
+    .action-btn { padding: 4px 8px; margin: 2px; width: auto; font-size: 12px; border-radius: 4px; display: inline-block; }
+    
+    .support-info { 
+      font-size: 13px; color: #94a3b8; margin-bottom: 15px; 
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+      padding-bottom: 10px; direction: ltr; text-align: left; 
+    }
+    .support-info strong { color: #e2e8f0; }
+    
+    h3 { color: #f8fafc; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin: 0; }
+
+    /* استایل پنجره ویرایش (Modal) */
+    .modal {
+      display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
+      align-items: center; justify-content: center;
+    }
+    .modal-content {
+      padding: 25px; width: 90%; max-width: 400px; position: relative;
+    }
+    .close-btn {
+      position: absolute; top: 15px; left: 15px; color: #94a3b8; font-size: 24px; font-weight: bold; cursor: pointer; width: auto; background: none; padding: 0; margin: 0;
+    }
+    .close-btn:hover { color: #fff; }
+  </style>
+</head>
+<body>
+
+  <!-- آیکون‌های پس‌زمینه -->
+  <svg class="satellite-bg sat-1" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M13 7L9 3m4 4l-4 4m4-4h7m-7 4l-4-4m4 4v7m-7-4l4 4m-4-4H3m4 4l4-4m-4 4v7"/></svg>
+  <svg class="satellite-bg sat-2" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M13 7L9 3m4 4l-4 4m4-4h7m-7 4l-4-4m4 4v7m-7-4l4 4m-4-4H3m4 4l4-4m-4 4v7"/></svg>
+  <svg class="satellite-bg dish-1" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a8 8 0 0 1 16 0M4 10v4a8 8 0 0 0 16 0v-4M12 14v7M9 21h6"/></svg>
+
+  <!-- بخش ورود -->
+  <div id="login-box">
+    <h3 style="text-align: center; margin-top: 0;">ورود به سیستم</h3>
+    <input id="email" type="email" placeholder="ایمیل">
+    <input id="password" type="password" placeholder="رمز عبور">
+    <button class="btn-main" onclick="login()">ورود</button>
+    <p id="login-msg" style="color:#ef4444; font-size:13px; text-align:center;"></p>
+  </div>
+
+  <!-- بخش اصلی برنامه -->
+  <div id="main" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3>لیست موجودی انبار</h3>
+      <button class="btn-danger" onclick="logout()" style="width:auto; padding: 8px 16px; margin:0;">خروج</button>
+    </div>
+    
+    <!-- نام پشتیبانی -->
+    <div class="support-info">
+      <strong>Support:</strong> Dr. Shameli | <strong>Tel:</strong> 09999981348
+    </div>
+
+    <p id="role-badge"></p>
+
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 60px;">وضعیت</th>
+            <th>نام کالا</th>
+            <th>قیمت (تومان)</th>
+            <th style="width: 60px;">تعداد</th>
+            <th class="admin-only" style="display:none; width: 160px; text-align: center;">عملیات</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <!-- داده‌ها اینجا قرار می‌گیرند -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- بخش مخصوص ادمین -->
+    <div id="admin-area" class="admin-area">
+      <h4 style="margin-top:0; color: #94a3b8;">افزودن کالای جدید (فقط ادمین)</h4>
+      <input id="new-name" placeholder="نام کالا">
+      <input id="new-price" type="text" placeholder="قیمت" oninput="formatPriceInput(this)">
+      <input id="new-qty" type="number" placeholder="تعداد موجودی">
+      <button class="btn-success" onclick="addItem()">افزودن به انبار</button>
+    </div>
+  </div>
+
+  <!-- پنجره ویرایش (Modal) -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeEditModal()">&times;</span>
+      <h3 style="margin-bottom: 20px;">ویرایش کالا</h3>
+      
+      <input type="hidden" id="edit-id">
+      <label style="font-size:13px; color:#94a3b8;">نام کالا:</label>
+      <input id="edit-name" placeholder="نام کالا">
+      
+      <label style="font-size:13px; color:#94a3b8;">قیمت:</label>
+      <input id="edit-price" type="text" placeholder="قیمت" oninput="formatPriceInput(this)">
+      
+      <label style="font-size:13px; color:#94a3b8;">تعداد موجودی:</label>
+      <input id="edit-qty" type="number" placeholder="تعداد موجودی">
+      
+      <button class="btn-main" onclick="saveEdit()" style="margin-top: 15px;">ذخیره تغییرات</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDAGmai92gIHQjdAGDKgbdEAN_8unecCuk",
+      authDomain: "anbarsky-3331.firebaseapp.com",
+      projectId: "anbarsky-3331",
+      storageBucket: "anbarsky-3331.firebasestorage.app",
+      messagingSenderId: "766426776267",
+      appId: "1:766426776267:web:55505b7595c271c97f914e"
+    };
+
+    const ADMIN_EMAIL = "behrozyazdanianbar@gmail.com";
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window.login = async () => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (e) {
+        document.getElementById('login-msg').textContent = "ورود ناموفق: ایمیل یا رمز اشتباه است.";
+      }
+    };
+
+    window.logout = () => signOut(auth);
+
+    onAuthStateChanged(auth, (user) => {
+      const loginBox = document.getElementById('login-box');
+      const main = document.getElementById('main');
+      
+      if (user) {
+        loginBox.style.display = 'none';
+        main.style.display = 'block';
+        
+        const isAdmin = user.email === ADMIN_EMAIL;
+        document.getElementById('role-badge').textContent = isAdmin ? "شما ادمین هستید (دسترسی ویرایش)" : "شما کاربر عادی هستید (فقط مشاهده)";
+        
+        document.getElementById('admin-area').style.display = isAdmin ? 'block' : 'none';
+        const adminCols = document.querySelectorAll('.admin-only');
+        adminCols.forEach(col => col.style.display = isAdmin ? 'table-cell' : 'none');
+        
+        loadItems(isAdmin);
+      } else {
+        loginBox.style.display = 'block';
+        main.style.display = 'none';
+      }
+    });
+
+    let unsubscribe = null;
+    function loadItems(isAdmin) {
+      if (unsubscribe) unsubscribe();
+      const q = collection(db, "items");
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+        if (snapshot.empty) {
+           tbody.innerHTML = `<tr><td colspan="${isAdmin ? 5 : 4}" style="text-align:center; color:#64748b;">انبار خالی است.</td></tr>`;
+        }
+        snapshot.forEach((docSnap) => {
+          const d = docSnap.data();
+          const id = docSnap.id;
+          const qty = d.qty || 0;
+          const dotClass = qty > 0 ? 'green' : 'red';
+          
+          const formattedPrice = Number(d.price).toLocaleString('en-US');
+
+          let actionButtons = '';
+          if (isAdmin) {
+            // دکمه ویرایش اضافه شد
+            actionButtons = `
+              <td class="admin-only" style="text-align: center; white-space: nowrap;">
+                <button class="action-btn btn-warning" onclick="decreaseQty('${id}', ${qty})">-1</button>
+                <button class="action-btn btn-danger" onclick="finishItem('${id}')">اتمام</button>
+                <button class="action-btn btn-main" onclick="openEditModal('${id}', '${d.name}', ${d.price}, ${qty})">ویرایش</button>
+              </td>
+            `;
+          }
+
+          tbody.innerHTML += `
+            <tr>
+              <td style="text-align: center;"><span class="dot ${dotClass}"></span></td>
+              <td>${d.name || ''}</td>
+              <td style="color: #38bdf8;">${formattedPrice}</td>
+              <td style="text-align: center;">${qty}</td>
+              ${actionButtons}
+            </tr>
+          `;
+        });
+      });
+    }
+
+    window.formatPriceInput = (input) => {
+      let value = input.value.replace(/,/g, '');
+      if (value) {
+        input.value = Number(value).toLocaleString('en-US');
+      }
+    };
+
+    window.addItem = async () => {
+      const name = document.getElementById('new-name').value;
+      const priceStr = document.getElementById('new-price').value.replace(/,/g, '');
+      const price = Number(priceStr);
+      const qty = Number(document.getElementById('new-qty').value);
+      
+      if (!name) return alert("لطفاً نام کالا را وارد کنید");
+      
+      try {
+        await addDoc(collection(db, "items"), { name, price, qty });
+        document.getElementById('new-name').value = '';
+        document.getElementById('new-price').value = '';
+        document.getElementById('new-qty').value = '';
+      } catch (e) {
+        alert("خطا در افزودن: " + e.message);
+      }
+    };
+
+    window.decreaseQty = async (id, currentQty) => {
+      if (currentQty <= 0) return alert("موجودی صفر است.");
+      try {
+        const itemRef = doc(db, "items", id);
+        await updateDoc(itemRef, { qty: currentQty - 1 });
+      } catch (e) {
+        alert("خطا در تغییر موجودی: " + e.message);
+      }
+    };
+
+    window.finishItem = async (id) => {
+      if (!confirm("آیا مطمئن هستید که این کالا تمام شده است؟ (موجودی صفر می‌شود)")) return;
+      try {
+        const itemRef = doc(db, "items", id);
+        await updateDoc(itemRef, { qty: 0 });
+      } catch (e) {
+        alert("خطا در تغییر موجودی: " + e.message);
+      }
+    };
+
+    // توابع مربوط به ویرایش
+    window.openEditModal = (id, name, price, qty) => {
+      document.getElementById('edit-id').value = id;
+      document.getElementById('edit-name').value = name;
+      document.getElementById('edit-price').value = Number(price).toLocaleString('en-US');
+      document.getElementById('edit-qty').value = qty;
+      document.getElementById('editModal').style.display = 'flex';
+    };
+
+    window.closeEditModal = () => {
+      document.getElementById('editModal').style.display = 'none';
+    };
+
+    window.saveEdit = async () => {
+      const id = document.getElementById('edit-id').value;
+      const name = document.getElementById('edit-name').value;
+      const priceStr = document.getElementById('edit-price').value.replace(/,/g, '');
+      const price = Number(priceStr);
+      const qty = Number(document.getElementById('edit-qty').value);
+
+      if (!name) return alert("نام کالا نمی‌تواند خالی باشد");
+
+      try {
+        const itemRef = doc(db, "items", id);
+        await updateDoc(itemRef, { name, price, qty });
+        closeEditModal();
+      } catch (e) {
+        alert("خطا در ویرایش کالا: " + e.message);
+      }
+    };
+  </script>
+</body>
+</html>
